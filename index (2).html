@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ Mundial Runner - Esquiva los Balones</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a5f2a 0%, #0d3b1e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 900px;
+            max-width: 95vw;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #4CAF50 60%, #2E7D32 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 4px solid #FFD700;
+        }
+
+        .stadium {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .score-board {
+            position: absolute;
+            top: 50px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #FFD700;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 10;
+            border: 2px solid #FFD700;
+        }
+
+        .high-score {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            z-index: 10;
+            border: 2px solid #FFD700;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 400px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #1a5f2a;
+        }
+
+        .btn-jump {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+        }
+
+        .btn-duck {
+            background: linear-gradient(135deg, #2196F3, #1565C0);
+            color: white;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #f44336, #c62828);
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .instructions {
+            text-align: center;
+            padding: 10px;
+            color: white;
+            font-size: 14px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 100;
+            border: 3px solid #FFD700;
+        }
+
+        .game-over h2 {
+            color: #FFD700;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .game-over p {
+            font-size: 20px;
+            margin: 10px 0;
+        }
+
+        .crowd {
+            position: absolute;
+            bottom: 140px;
+            width: 100%;
+            height: 30px;
+            background: repeating-linear-gradient(
+                90deg,
+                #444 0px,
+                #444 10px,
+                #666 10px,
+                #666 20px
+            );
+            opacity: 0.3;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .controls {
+                gap: 10px;
+            }
+            button {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+            .score-board, .high-score {
+                font-size: 14px;
+                padding: 5px 10px;
+            }
+        }
+
+        /* Touch feedback */
+        .touch-active {
+            transform: scale(0.95) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="stadium">🏟️ ESTADIO MUNDIAL 🏟️</div>
+        <div class="score-board">Puntos: <span id="score">0</span></div>
+        <div class="high-score">🏆 Mejor: <span id="highScore">0</span></div>
+        
+        <div class="crowd"></div>
+        
+        <canvas id="gameCanvas" width="900" height="400"></canvas>
+        
+        <div class="game-over" id="gameOver">
+            <h2>¡GAME OVER!</h2>
+            <p>⚽ Te golpearon ⚽</p>
+            <p>Puntos: <span id="finalScore">0</span></p>
+            <p>🏆 Récord: <span id="finalHigh">0</span></p>
+        </div>
+
+        <div class="controls">
+            <button class="btn-start" id="btnStart" onclick="startGame()">▶ START</button>
+            <button class="btn-jump" id="btnJump" onclick="jump()" disabled>SALTAR ⬆️</button>
+            <button class="btn-duck" id="btnDuck" onclick="duck()" disabled>AGACHARSE ⬇️</button>
+            <button class="btn-reset" id="btnReset" onclick="resetGame()" disabled>🔄 RESET</button>
+        </div>
+        
+        <div class="instructions">
+            🎮 También puedes usar: ESPACIO/↑ para saltar | ↓ para agacharse | ENTER para empezar
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let gameRunning = false;
+        let score = 0;
+        let highScore = localStorage.getItem('mundialHighScore') || 0;
+        let gameSpeed = 4;
+        let frameCount = 0;
+        let obstacles = [];
+        let particles = [];
+        let clouds = [];
+        
+        // Player
+        const player = {
+            x: 100,
+            y: 280,
+            width: 40,
+            height: 60,
+            jumping: false,
+            ducking: false,
+            jumpVelocity: 0,
+            groundY: 280,
+            jumpPower: -15,
+            gravity: 0.8,
+            duckHeight: 30,
+            normalHeight: 60,
+            color: '#FF6B35',
+            legAngle: 0
+        };
+
+        // Update high score display
+        document.getElementById('highScore').textContent = highScore;
+
+        // Initialize clouds
+        for (let i = 0; i < 5; i++) {
+            clouds.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * 100 + 20,
+                width: Math.random() * 60 + 40,
+                speed: Math.random() * 0.5 + 0.2
+            });
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameRunning) jump();
+            }
+            if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                if (gameRunning) duck();
+            }
+            if (e.code === 'Enter') {
+                if (!gameRunning && document.getElementById('btnStart').disabled === false) {
+                    startGame();
+                } else if (!gameRunning && document.getElementById('btnReset').disabled === false) {
+                    resetGame();
+                }
+            }
+        });
+
+        // Touch support for mobile
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            if (!gameRunning) return;
+            
+            const touchY = e.touches[0].clientY;
+            const screenHeight = window.innerHeight;
+            
+            if (touchY < screenHeight / 2) {
+                jump();
+            } else {
+                duck();
+            }
+        });
+
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            gameSpeed = 4;
+            frameCount = 0;
+            obstacles = [];
+            particles = [];
+            player.y = player.groundY;
+            player.jumping = false;
+            player.ducking = false;
+            player.height = player.normalHeight;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnJump').disabled = false;
+            document.getElementById('btnDuck').disabled = false;
+            document.getElementById('btnReset').disabled = false;
+            
+            gameLoop();
+        }
+
+        function jump() {
+            if (!player.jumping && !player.ducking && gameRunning) {
+                player.jumping = true;
+                player.jumpVelocity = player.jumpPower;
+                createParticles(player.x + 20, player.y + player.height, 5, '#8B4513');
+            }
+        }
+
+        function duck() {
+            if (!player.jumping && gameRunning) {
+                player.ducking = true;
+                player.height = player.duckHeight;
+                player.y = player.groundY + (player.normalHeight - player.duckHeight);
+                setTimeout(() => {
+                    player.ducking = false;
+                    player.height = player.normalHeight;
+                    player.y = player.groundY;
+                }, 600);
+            }
+        }
+
+        function resetGame() {
+            gameRunning = false;
+            score = 0;
+            gameSpeed = 4;
+            obstacles = [];
+            particles = [];
+            player.y = player.groundY;
+            player.jumping = false;
+            player.ducking = false;
+            player.height = player.normalHeight;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnJump').disabled = true;
+            document.getElementById('btnDuck').disabled = true;
+            document.getElementById('btnReset').disabled = true;
+            
+            draw();
+        }
+
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    life: 30,
+                    color: color,
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function spawnObstacle() {
+            const type = Math.random() > 0.5 ? 'ground' : 'air';
+            const obstacle = {
+                x: canvas.width,
+                y: type === 'ground' ? 310 : 220,
+                width: 35,
+                height: 35,
+                type: type,
+                passed: false,
+                rotation: 0
+            };
+            obstacles.push(obstacle);
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            
+            frameCount++;
+            
+            // Increase speed gradually
+            if (frameCount % 300 === 0) {
+                gameSpeed += 0.5;
+            }
+            
+            // Spawn obstacles
+            if (frameCount % Math.max(60, 120 - Math.floor(gameSpeed * 5)) === 0) {
+                spawnObstacle();
+            }
+            
+            // Update player
+            if (player.jumping) {
+                player.y += player.jumpVelocity;
+                player.jumpVelocity += player.gravity;
+                
+                if (player.y >= player.groundY) {
+                    player.y = player.groundY;
+                    player.jumping = false;
+                    player.jumpVelocity = 0;
+                    createParticles(player.x + 20, player.y + player.height, 3, '#8B4513');
+                }
+            }
+            
+            player.legAngle += 0.2;
+            
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.x -= gameSpeed;
+                obs.rotation += 0.1;
+                
+                // Check if passed
+                if (!obs.passed && obs.x + obs.width < player.x) {
+                    obs.passed = true;
+                    score += 5;
+                    document.getElementById('score').textContent = score;
+                    createParticles(obs.x, obs.y, 8, '#FFD700');
+                }
+                
+                // Remove off-screen
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+                
+                // Collision detection
+                const playerHitbox = {
+                    x: player.x + 5,
+                    y: player.y + 5,
+                    width: player.width - 10,
+                    height: player.height - 10
+                };
+                
+                const obsHitbox = {
+                    x: obs.x + 5,
+                    y: obs.y + 5,
+                    width: obs.width - 10,
+                    height: obs.height - 10
+                };
+                
+                if (playerHitbox.x < obsHitbox.x + obsHitbox.width &&
+                    playerHitbox.x + playerHitbox.width > obsHitbox.x &&
+                    playerHitbox.y < obsHitbox.y + obsHitbox.height &&
+                    playerHitbox.y + playerHitbox.height > obsHitbox.y) {
+                    gameOver();
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            
+            // Update clouds
+            clouds.forEach(cloud => {
+                cloud.x -= cloud.speed;
+                if (cloud.x + cloud.width < 0) {
+                    cloud.x = canvas.width + 50;
+                    cloud.y = Math.random() * 100 + 20;
+                }
+            });
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw sky gradient
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, 240);
+            skyGradient.addColorStop(0, '#87CEEB');
+            skyGradient.addColorStop(1, '#B0E0E6');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, 240);
+            
+            // Draw clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            clouds.forEach(cloud => {
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, 20, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 15, cloud.y - 10, 25, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 30, cloud.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw grass/field
+            const grassGradient = ctx.createLinearGradient(0, 240, 0, canvas.height);
+            grassGradient.addColorStop(0, '#4CAF50');
+            grassGradient.addColorStop(1, '#2E7D32');
+            ctx.fillStyle = grassGradient;
+            ctx.fillRect(0, 240, canvas.width, canvas.height - 240);
+            
+            // Draw field lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([20, 10]);
+            ctx.beginPath();
+            ctx.moveTo(0, 340);
+            ctx.lineTo(canvas.width, 340);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw player (muñequito)
+            drawPlayer();
+            
+            // Draw obstacles (balones)
+            obstacles.forEach(obs => drawBalloon(obs));
+            
+            // Draw particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            
+            // Draw speed indicator
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`⚡ Velocidad: ${gameSpeed.toFixed(1)}`, 20, 380);
+        }
+
+        function drawPlayer() {
+            const x = player.x;
+            const y = player.y;
+            const w = player.width;
+            const h = player.height;
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, 340, w/2, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Body (shirt)
+            ctx.fillStyle = player.color;
+            ctx.fillRect(x + 8, y + 15, w - 16, h - 35);
+            
+            // Shirt stripes (Argentina style)
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(x + 14, y + 15, 6, h - 35);
+            ctx.fillRect(x + 26, y + 15, 6, h - 35);
+            
+            // Head
+            ctx.fillStyle = '#FFDBAC';
+            ctx.beginPath();
+            ctx.arc(x + w/2, y + 10, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(x + w/2 - 4, y + 8, 2, 0, Math.PI * 2);
+            ctx.arc(x + w/2 + 4, y + 8, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mouth
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            if (player.jumping) {
+                ctx.arc(x + w/2, y + 13, 4, 0, Math.PI, false); // Open mouth when jumping
+            } else {
+                ctx.arc(x + w/2, y + 14, 3, 0, Math.PI, false); // Smile
+            }
+            ctx.stroke();
+            
+            // Hair
+            ctx.fillStyle = '#4A2511';
+            ctx.beginPath();
+            ctx.arc(x + w/2, y + 2, 12, Math.PI, 0, false);
+            ctx.fill();
+            
+            // Arms
+            ctx.strokeStyle = '#FFDBAC';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            if (player.jumping) {
+                ctx.moveTo(x + 5, y + 25);
+                ctx.lineTo(x - 5, y + 15); // Arms up when jumping
+                ctx.moveTo(x + w - 5, y + 25);
+                ctx.lineTo(x + w + 5, y + 15);
+            } else if (player.ducking) {
+                ctx.moveTo(x + 5, y + 20);
+                ctx.lineTo(x - 5, y + 25); // Arms in when ducking
+                ctx.moveTo(x + w - 5, y + 20);
+                ctx.lineTo(x + w + 5, y + 25);
+            } else {
+                ctx.moveTo(x + 5, y + 25);
+                ctx.lineTo(x - 5, y + 35 + Math.sin(player.legAngle) * 5);
+                ctx.moveTo(x + w - 5, y + 25);
+                ctx.lineTo(x + w + 5, y + 35 + Math.sin(player.legAngle + Math.PI) * 5);
+            }
+            ctx.stroke();
+            
+            // Legs
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            if (player.jumping) {
+                ctx.moveTo(x + 12, y + h - 15);
+                ctx.lineTo(x + 8, y + h + 5); // Legs bent when jumping
+                ctx.moveTo(x + w - 12, y + h - 15);
+                ctx.lineTo(x + w - 8, y + h - 5);
+            } else if (player.ducking) {
+                ctx.moveTo(x + 12, y + h - 10);
+                ctx.lineTo(x + 10, y + h + 5);
+                ctx.moveTo(x + w - 12, y + h - 10);
+                ctx.lineTo(x + w - 10, y + h + 5);
+            } else {
+                ctx.moveTo(x + 12, y + h - 15);
+                ctx.lineTo(x + 10, y + h + Math.sin(player.legAngle) * 10);
+                ctx.moveTo(x + w - 12, y + h - 15);
+                ctx.lineTo(x + w - 10, y + h + Math.sin(player.legAngle + Math.PI) * 10);
+            }
+            ctx.stroke();
+            
+            // Shoes
+            ctx.fillStyle = '#333';
+            if (player.jumping) {
+                ctx.fillRect(x + 5, y + h + 3, 10, 5);
+                ctx.fillRect(x + w - 15, y + h - 2, 10, 5);
+            } else {
+                ctx.fillRect(x + 5, y + h + Math.sin(player.legAngle) * 10, 10, 5);
+                ctx.fillRect(x + w - 15, y + h + Math.sin(player.legAngle + Math.PI) * 10, 10, 5);
+            }
+            
+            // Number on shirt
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('10', x + w/2, y + 32);
+        }
+
+        function drawBalloon(obs) {
+            const x = obs.x;
+            const y = obs.y;
+            const r = obs.width / 2;
+            
+            ctx.save();
+            ctx.translate(x + r, y + r);
+            ctx.rotate(obs.rotation);
+            
+            // Ball shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(0, r + 5, r * 0.8, r * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ball pattern (classic soccer ball)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Pentagon pattern
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.moveTo(0, -r * 0.5);
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 72 - 90) * Math.PI / 180;
+                ctx.lineTo(Math.cos(angle) * r * 0.5, Math.sin(angle) * r * 0.5);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Lines connecting to edges
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 72 - 90) * Math.PI / 180;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('mundialHighScore', highScore);
+                document.getElementById('highScore').textContent = highScore;
+            }
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalHigh').textContent = highScore;
+            document.getElementById('gameOver').style.display = 'block';
+            
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnJump').disabled = true;
+            document.getElementById('btnDuck').disabled = true;
+            document.getElementById('btnReset').disabled = false;
+            
+            // Explosion effect
+            createParticles(player.x + 20, player.y + 30, 20, '#FF6B35');
+            createParticles(player.x + 20, player.y + 30, 15, '#FFD700');
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>
